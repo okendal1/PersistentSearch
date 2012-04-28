@@ -39,6 +39,7 @@ public class ResultCollectionView extends JPanel implements Observer {
 		nameTextBox.setBounds(10, 11, 128, 20);
 		add(nameTextBox);
 		nameTextBox.setColumns(10);
+		nameTextBox.setText(model.getName());
 		
 		
 		defaultButton = new JButton("Default View");
