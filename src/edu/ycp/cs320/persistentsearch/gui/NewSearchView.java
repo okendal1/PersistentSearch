@@ -10,16 +10,33 @@ import edu.ycp.cs320.persistentsearch.model.NewYorkTimes;
 import edu.ycp.cs320.persistentsearch.model.ResultCollection;
 import edu.ycp.cs320.persistentsearch.model.Search;
 import edu.ycp.cs320.persistentsearch.model.SearchException;
+import edu.ycp.cs320.persistentsearch.server.Server;
+import edu.ycp.cs320.persistentsearch.xml.Convert;
 
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.JCheckBox;
 import javax.swing.JButton;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringWriter;
 
 public class NewSearchView extends JPanel implements Observer {
 	private static final long serialVersionUID = 1L;
@@ -49,9 +66,7 @@ public class NewSearchView extends JPanel implements Observer {
 	private Bloomberg bloomberg;
 	
 	private NewSearchCallback newSearchCallback;
-	/*
-	private NewResultCollectionCallback newResultCollectionCallback;
-	*/
+	
 	public NewSearchView() 
 	{
 		bing = new Bing();
@@ -111,6 +126,12 @@ public class NewSearchView extends JPanel implements Observer {
 					handleSave();
 				} catch (SearchException e) {
 					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (ParserConfigurationException e) {
+					e.printStackTrace();
+				} catch (TransformerException e) {
+					e.printStackTrace();
 				}
 			}
 		});
@@ -130,23 +151,23 @@ public class NewSearchView extends JPanel implements Observer {
 //		this.newResultCollectionCallback = newResultCollectionCallback;
 //	}
 	
-	protected void handleSave() throws SearchException
+	protected void handleSave() throws SearchException, IOException, ParserConfigurationException, TransformerException
 	{
 		model = new Search(termsTextBox.getText());
 		
-		if(bingCheckBox.isEnabled())
+		if(bingCheckBox.isSelected())
 		{
 			model.addWebsite(bing);
 		}
-		if(espnCheckBox.isEnabled())
+		if(espnCheckBox.isSelected())
 		{
 			model.addWebsite(espn);
 		}
-		if(newYorkTimesCheckBox.isEnabled())
+		if(newYorkTimesCheckBox.isSelected())
 		{
 			model.addWebsite(newYorkTimes);
 		}
-		if(bloombergCheckBox.isEnabled())
+		if(bloombergCheckBox.isSelected())
 		{
 			model.addWebsite(bloomberg);
 		}
@@ -161,7 +182,35 @@ public class NewSearchView extends JPanel implements Observer {
 			newSearchCallback.onNewSearch(model);
 		}
 		
+		//create file in search folder
 		
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document newDoc = dBuilder.newDocument();
+		Element root = Convert.convertSearchToXML(newDoc, model);
+		newDoc.appendChild(root);
+		
+		TransformerFactory transfac = TransformerFactory.newInstance();
+        Transformer trans = transfac.newTransformer();
+        trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        trans.setOutputProperty(OutputKeys.INDENT, "yes");
+		
+		StringWriter sw = new StringWriter();
+        StreamResult result = new StreamResult(sw);
+        DOMSource source = new DOMSource(newDoc);
+        trans.transform(source, result);
+        String xmlString = sw.toString();
+        
+		//***** File Writer will create the file
+		FileWriter writer = new FileWriter(Server.SEARCH_DIR + "/" + model.getContentHash() + ".search");
+		try {
+			writer.write(xmlString);
+		} finally {
+			writer.close();
+		}
+		
+		
+		/////////////////////////////////////////////////
 		
 		termsTextBox.setText("");
 		userApp.getInstance().switchView(userApp.RESULT_COLLECTION_NAME);
