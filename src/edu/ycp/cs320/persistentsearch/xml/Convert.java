@@ -88,6 +88,13 @@ public class Convert {
 		return criteriaElt;
 	}
 	
+	/**
+	 * Convert an element in an XML document into a {@link Search} object.
+	 * 
+	 * @param SearchElt an element in an XML document containing the data of a Search
+	 * @return a Search
+	 */
+	
 	public static Search convertSearchFromXML(Element searchElt)
 	{
 		Search search = new Search("");
